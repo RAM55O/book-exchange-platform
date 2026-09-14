@@ -9,8 +9,8 @@ spec:
   project: default
   source:
     repoURL: "https://github.com/RAM55O/book-exchange-platform.git"
-    targetRevision: HEAD
-    path: "." # Path inside your repo where Chart.yaml lives
+    targetRevision: main
+    path: book-exchange # Use 'book-exchange' if Chart.yaml is in the folder, or '.' if in root
     helm:
       valueFiles:
         - values.yaml
@@ -19,7 +19,7 @@ spec:
     namespace: n-book-exchange
   syncPolicy:
     automated:
-      prune: true # Automatically delete resources removed from Git
-      selfHeal: true # Automatically revert manual changes made via kubectl
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
