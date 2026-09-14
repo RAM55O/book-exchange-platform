@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: book-exchange-gitops
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: "https://github.com/RAM55O/book-exchange-platform.git"
+    targetRevision: HEAD
+    path: "." # Path inside your repo where Chart.yaml lives
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: n-book-exchange
+  syncPolicy:
+    automated:
+      prune: true # Automatically delete resources removed from Git
+      selfHeal: true # Automatically revert manual changes made via kubectl
+    syncOptions:
+      - CreateNamespace=true

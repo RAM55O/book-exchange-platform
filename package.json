@@ -1,0 +1,26 @@
+{
+  "name": "book-swap-platform",
+  "version": "1.0.0",
+  "description": "A student & reader book exchange platform built with Node.js, Express, MySQL, and Bootstrap",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "book-swap",
+    "book-exchange",
+    "express",
+    "mysql",
+    "node"
+  ],
+  "author": "Book Swap",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mysql2": "^3.11.5",
+    "sqlite3": "^5.1.7"
+  }
+}

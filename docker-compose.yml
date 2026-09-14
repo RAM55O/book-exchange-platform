@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: book_exchange_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_HOST=mysql-db
+      - DB_PORT=3306
+      - DB_USER=book_user
+      - DB_PASSWORD=book_password
+      - DB_NAME=book_swap_db
+      - ENABLE_SQLITE_FALLBACK=false
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - book_network
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: book_exchange_mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: book_swap_db
+      MYSQL_USER: book_user
+      MYSQL_PASSWORD: book_password
+    ports:
+      - "3307:3306" # Maps host 3307 -> container 3306 to prevent conflicts with local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Automatically executes schema.sql and seed.sql on first startup
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - book_network
+
+networks:
+  book_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
