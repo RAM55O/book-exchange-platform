@@ -15,7 +15,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/book-exchange
+  # MUST be lowercase:
+  IMAGE_NAME: ram55o/book-exchange
 
 jobs:
   build-scan-push:
