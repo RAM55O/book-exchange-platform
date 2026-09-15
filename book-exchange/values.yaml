@@ -5,8 +5,8 @@
 replicaCount: 2
 
 image:
-  repository: book_exchange-app
-  pullPolicy: IfNotPresent
+  repository: ghcr.io/ram55o/book-exchange
+  pullPolicy: Always
   tag: "latest"
 
 service:
