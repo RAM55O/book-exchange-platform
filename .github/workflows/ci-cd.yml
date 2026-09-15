@@ -15,7 +15,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  # MUST be lowercase:
+  # Must be strictly lowercase to satisfy Docker/GHCR rules
   IMAGE_NAME: ram55o/book-exchange
 
 jobs:
@@ -42,7 +42,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker Image Locally for Scan
+      - name: Build Docker Image Locally for Scanning
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -51,12 +51,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # --- TRIVY VULNERABILITY SCAN ---
       - name: Scan Image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
           format: 'table'
-          exit-code: '0'
+          exit-code: '0' # Reports findings without failing the build
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -81,7 +82,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Image Tag in Helm Chart
+      - name: Update Image Tag in Helm values.yaml
         run: |
           NEW_TAG="${{ needs.build-scan-push.outputs.short_sha }}"
           sed -i "s/tag:.*/tag: \"$NEW_TAG\"/g" book-exchange/values.yaml
