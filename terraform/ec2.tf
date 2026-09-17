@@ -32,6 +32,7 @@ resource "aws_instance" "app" {
               docker run -d \
                 --name book_exchange_app \
                 --restart unless-stopped \
+                -p 80:3000 \
                 -p 3000:3000 \
                 -e PORT=3000 \
                 -e ENABLE_SQLITE_FALLBACK=true \
