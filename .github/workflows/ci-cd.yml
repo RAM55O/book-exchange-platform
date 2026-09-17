@@ -1,4 +1,4 @@
-name: CI/CD & DevSecOps Pipeline
+﻿name: CI/CD & DevSecOps Pipeline
 
 on:
   push:
@@ -8,17 +8,85 @@ on:
       - 'book-exchange/values.yaml'
       - 'README.md'
       - '.gitignore'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'book-exchange/values.yaml'
+      - 'README.md'
+      - '.gitignore'
+  workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 env:
   REGISTRY: ghcr.io
   # Must be strictly lowercase to satisfy Docker/GHCR rules
   IMAGE_NAME: ram55o/book-exchange
+  AWS_REGION: us-east-1
+  TF_WORKING_DIR: ./terraform
 
 jobs:
+  # ============================================================================
+  # JOB 1: TERRAFORM LINT, VALIDATION & SECURITY SCAN (IAC CI/CD)
+  # ============================================================================
+  terraform:
+    name: Terraform Lint & Security Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -diff
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Scan Terraform Code with Trivy (IaC Security)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: ./terraform
+          format: 'table'
+          exit-code: '0' # Reports security findings in job summary
+          severity: 'CRITICAL,HIGH'
+
+      - name: Configure AWS Credentials (Optional)
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Plan (Optional)
+        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
+        run: terraform plan -no-color
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # ============================================================================
+  # JOB 2: DOCKER BUILD, TRIVY CONTAINER SCAN & PUBLISH TO GHCR
+  # ============================================================================
   build-scan-push:
     name: Build, Scan & Publish
     runs-on: ubuntu-latest
@@ -63,6 +131,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Push Container Image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -71,9 +140,13 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+  # ============================================================================
+  # JOB 3: GITOPS HELM UPDATE (AUTOMATIC ARGO CD SYNC)
+  # ============================================================================
   update-helm-gitops:
     name: Update Helm Values & Trigger Argo CD
-    needs: build-scan-push
+    needs: [terraform, build-scan-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

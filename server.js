@@ -1,15 +1,19 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const client = require("prom-client");
+require("dotenv").config();
 
-const db = require('./config/db');
-const bookRoutes = require('./routes/bookRoutes');
-const requestRoutes = require('./routes/requestRoutes');
-const requestController = require('./controllers/requestController');
+const db = require("./config/db");
+const bookRoutes = require("./routes/bookRoutes");
+const requestRoutes = require("./routes/requestRoutes");
+const requestController = require("./controllers/requestController");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Collect default Node.js system metrics such as heap, event loop, and CPU.
+client.collectDefaultMetrics({ register: client.register });
 
 // Middleware
 app.use(cors());
@@ -17,28 +21,36 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static frontend assets
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 // API Routes
-app.use('/api/books', bookRoutes);
-app.use('/api/requests', requestRoutes);
-app.get('/api/stats', requestController.getStats);
+app.use("/api/books", bookRoutes);
+app.use("/api/requests", requestRoutes);
+app.get("/api/stats", requestController.getStats);
+
+// Expose metrics for Prometheus to scrape.
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", client.register.contentType);
+  res.end(await client.register.metrics());
+});
 
 // Database status endpoint
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
-    status: 'online',
+    status: "online",
     database: db.getDatabaseType(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 // Fallback to index.html for SPA-like navigation
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ success: false, message: 'API endpoint not found' });
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api")) {
+    return res
+      .status(404)
+      .json({ success: false, message: "API endpoint not found" });
   }
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Start Server and Initialize DB
@@ -55,7 +67,7 @@ async function startServer() {
       console.log(`====================================================`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 }
