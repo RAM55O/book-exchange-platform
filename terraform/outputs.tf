@@ -37,3 +37,8 @@ output "ssh_command" {
   description = "Example command to SSH into the EC2 instance."
   value       = "ssh -i ${local_file.private_key.filename} ec2-user@${aws_instance.app.public_ip}"
 }
+
+output "app_url" {
+  description = "Direct URL to access the live Book Exchange web app."
+  value       = "http://${aws_instance.app.public_ip}:3000"
+}
